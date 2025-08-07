@@ -59,6 +59,17 @@ fn processInput(stdin: anytype, stdout: anytype, board: *Board, first_player: *c
             }
         }
         try board.draw(stdout, first_player, second_player);
+        const is_first_player_won = board.checkWin(first_player);
+
+        if (is_first_player_won) {
+            std.debug.print("First Player Won\n", .{});
+            break;
+        }
+        const is_second_player_won = board.checkWin(second_player);
+        if (is_second_player_won) {
+            std.debug.print("Second Player Won\n", .{});
+            break;
+        }
     }
 }
 pub const Board = struct {
@@ -107,6 +118,29 @@ pub const Board = struct {
                 try writer.print("{s}|", .{cell_value});
             }
         }
+    }
+    // |1|2|3|
+    // |4|5|6|
+    // |7|8|9|
+    fn checkWin(self: *Self, player: *const Player) bool {
+        // std.debug.print("size: {d}\n", .{self.size});
+        for (0..self.size) |row| {
+            // std.debug.print("row: {d}\n ", .{row});
+            for (0..self.size) |col| {
+                // std.debug.print("col: {d}\n", .{col});
+                const cell_index = row * self.size + col;
+                // std.debug.print("cell_index: {d}\n", .{cell_index});
+                if (self.cells[cell_index].player != player) {
+                    break;
+                } else {
+                    if (col == (self.size - 1)) {
+                        return true;
+                    }
+                }
+            }
+            // std.debug.print("----------------------\n", .{});
+        }
+        return false;
     }
     fn changePlayer(self: *Self, first_player: *const Player, second_player: *const Player) void {
         if (self.current_player == first_player) {
@@ -172,7 +206,7 @@ test "test board draw" {
 
     const expected_output = "|1|2|3|\n|4|5|6|\n|7|8|9|\n";
     try board.draw(writer, &first_player, &second_player);
-    
+
     // Only compare the part of the buffer that was written to
     const output = output_buffer[0..output_stream.pos];
     try std.testing.expectEqualStrings(expected_output, output);
