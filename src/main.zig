@@ -42,9 +42,6 @@ fn processInput(stdin: anytype, stdout: anytype, board: *Board, first_player: *c
                 //we need to strip out the \r
                 number = @constCast(std.mem.trimRight(u8, number, "\r"));
             }
-            if (number.len == 0) {
-                break;
-            }
             const parsed = std.fmt.parseInt(u8, number, 10) catch null;
 
             if (parsed) |num| {
@@ -68,6 +65,12 @@ fn processInput(stdin: anytype, stdout: anytype, board: *Board, first_player: *c
         const is_second_player_won = board.checkWin(second_player);
         if (is_second_player_won) {
             std.debug.print("Second Player Won\n", .{});
+            break;
+        }
+        const is_draw = board.checkDraw();
+
+        if (is_draw) {
+            std.debug.print("Draw !\n", .{});
             break;
         }
     }
@@ -119,9 +122,26 @@ pub const Board = struct {
             }
         }
     }
+
     // |1|2|3|
     // |4|5|6|
     // |7|8|9|
+    //
+    // |*|*|*|
+    // |4|5|6|
+    // |7|8|9|
+    //
+    // |*|2|3|
+    // |*|5|6|
+    // |*|8|9|
+    //
+    // |*|2|3|
+    // |4|*|6|
+    // |7|8|*|
+    //
+    // |1|2|*|
+    // |4|*|6|
+    // |*|8|9|
     fn checkWin(self: *Self, player: *const Player) bool {
         // std.debug.print("size: {d}\n", .{self.size});
         for (0..self.size) |row| {
@@ -140,7 +160,56 @@ pub const Board = struct {
             }
             // std.debug.print("----------------------\n", .{});
         }
+        // Check columns
+        for (0..self.size) |col| {
+            for (0..self.size) |row| {
+                const cell_index = row * self.size + col;
+                if (self.cells[cell_index].player != player) {
+                    break;
+                } else {
+                    if (row == (self.size - 1)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Check diagonals
+        for (0..self.size) |i| {
+            const left_diagonal_index = i * self.size + i;
+            // 0 * 3 + 3
+            // 1 * 3 + 3 - 1
+            // 2 * 3 + 3 - 2
+            if (self.cells[left_diagonal_index].player != player) {
+                break;
+            } else {
+                if (i == (self.size - 1)) {
+                    return true;
+                }
+            }
+        }
+        for (0..self.size) |i| {
+            const right_diagonal_index = i * self.size + self.size - 1 - i;
+            // std.debug.print("index: {d}\n", .{right_diagonal_index});
+            // 0 * 3 + 3
+            // 1 * 3 + 3 - 1
+            // 2 * 3 + 3 - 2
+            if (self.cells[right_diagonal_index].player != player) {
+                break;
+            } else {
+                if (i == (self.size - 1)) {
+                    return true;
+                }
+            }
+        }
         return false;
+    }
+    fn checkDraw(self: *Self) bool {
+        for (self.cells) |cell| {
+            if (cell.player == null) {
+                return false;
+            }
+        }
+        return true;
     }
     fn changePlayer(self: *Self, first_player: *const Player, second_player: *const Player) void {
         if (self.current_player == first_player) {
