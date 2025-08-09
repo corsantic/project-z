@@ -123,34 +123,17 @@ pub const Board = struct {
         }
     }
 
-    // |1|2|3|
-    // |4|5|6|
-    // |7|8|9|
-    //
-    // |*|*|*|
-    // |4|5|6|
-    // |7|8|9|
-    //
-    // |*|2|3|
-    // |*|5|6|
-    // |*|8|9|
-    //
-    // |*|2|3|
-    // |4|*|6|
-    // |7|8|*|
-    //
-    // |1|2|*|
-    // |4|*|6|
-    // |*|8|9|
     fn checkWin(self: *Self, player: *const Player) bool {
         // std.debug.print("size: {d}\n", .{self.size});
+        // Check rows and columns
         for (0..self.size) |row| {
             // std.debug.print("row: {d}\n ", .{row});
             for (0..self.size) |col| {
                 // std.debug.print("col: {d}\n", .{col});
-                const cell_index = row * self.size + col;
+                const row_cell_index = row * self.size + col;
+                const col_cell_index = col * self.size + row;
                 // std.debug.print("cell_index: {d}\n", .{cell_index});
-                if (self.cells[cell_index].player != player) {
+                if (self.cells[row_cell_index].player != player and self.cells[col_cell_index].player != player) {
                     break;
                 } else {
                     if (col == (self.size - 1)) {
@@ -160,40 +143,11 @@ pub const Board = struct {
             }
             // std.debug.print("----------------------\n", .{});
         }
-        // Check columns
-        for (0..self.size) |col| {
-            for (0..self.size) |row| {
-                const cell_index = row * self.size + col;
-                if (self.cells[cell_index].player != player) {
-                    break;
-                } else {
-                    if (row == (self.size - 1)) {
-                        return true;
-                    }
-                }
-            }
-        }
         // Check diagonals
         for (0..self.size) |i| {
             const left_diagonal_index = i * self.size + i;
-            // 0 * 3 + 3
-            // 1 * 3 + 3 - 1
-            // 2 * 3 + 3 - 2
-            if (self.cells[left_diagonal_index].player != player) {
-                break;
-            } else {
-                if (i == (self.size - 1)) {
-                    return true;
-                }
-            }
-        }
-        for (0..self.size) |i| {
             const right_diagonal_index = i * self.size + self.size - 1 - i;
-            // std.debug.print("index: {d}\n", .{right_diagonal_index});
-            // 0 * 3 + 3
-            // 1 * 3 + 3 - 1
-            // 2 * 3 + 3 - 2
-            if (self.cells[right_diagonal_index].player != player) {
+            if (self.cells[left_diagonal_index].player != player and self.cells[right_diagonal_index].player != player) {
                 break;
             } else {
                 if (i == (self.size - 1)) {
@@ -279,4 +233,91 @@ test "test board draw" {
     // Only compare the part of the buffer that was written to
     const output = output_buffer[0..output_stream.pos];
     try std.testing.expectEqualStrings(expected_output, output);
+}
+
+// |1|2|3|
+// |4|5|6|
+// |7|8|9|
+//
+// |*|*|*|
+// |4|5|6|
+// |7|8|9|
+//
+// |*|2|3|
+// |*|5|6|
+// |*|8|9|
+//
+// |*|2|3|
+// |4|*|6|
+// |7|8|*|
+//
+// |1|2|*|
+// |4|*|6|
+// |*|8|9|
+test "test board check win row condition" {
+    var gpa = std.heap.DebugAllocator(.{}){};
+    const allocator = gpa.allocator();
+    const first_player = Player.init("Player 1", "*", PlayerOrder.first);
+    const second_player = Player.init("Player 2", "#", PlayerOrder.second);
+    var board = try Board.init(allocator, 9, 3, &first_player);
+    defer board.deinit();
+
+    // Simulate a winning condition for the first player
+    board.cells[0].player = &first_player;
+    board.cells[1].player = &first_player;
+    board.cells[2].player = &first_player;
+
+    try testing.expect(board.checkWin(&first_player) == true);
+    try testing.expect(board.checkWin(&second_player) == false);
+}
+
+test "test board check win column condition" {
+    var gpa = std.heap.DebugAllocator(.{}){};
+    const allocator = gpa.allocator();
+    const first_player = Player.init("Player 1", "*", PlayerOrder.first);
+    const second_player = Player.init("Player 2", "#", PlayerOrder.second);
+    var board = try Board.init(allocator, 9, 3, &first_player);
+    defer board.deinit();
+
+    // Simulate a winning condition for the first player
+    board.cells[0].player = &first_player;
+    board.cells[3].player = &first_player;
+    board.cells[6].player = &first_player;
+
+    try testing.expect(board.checkWin(&first_player) == true);
+    try testing.expect(board.checkWin(&second_player) == false);
+}
+
+test "test board check win left diagonal condition" {
+    var gpa = std.heap.DebugAllocator(.{}){};
+    const allocator = gpa.allocator();
+    const first_player = Player.init("Player 1", "*", PlayerOrder.first);
+    const second_player = Player.init("Player 2", "#", PlayerOrder.second);
+    var board = try Board.init(allocator, 9, 3, &first_player);
+    defer board.deinit();
+
+    // Simulate a winning condition for the first player
+    board.cells[0].player = &first_player;
+    board.cells[4].player = &first_player;
+    board.cells[8].player = &first_player;
+
+    try testing.expect(board.checkWin(&first_player) == true);
+    try testing.expect(board.checkWin(&second_player) == false);
+}
+
+test "test board check win right diagonal condition" {
+    var gpa = std.heap.DebugAllocator(.{}){};
+    const allocator = gpa.allocator();
+    const first_player = Player.init("Player 1", "*", PlayerOrder.first);
+    const second_player = Player.init("Player 2", "#", PlayerOrder.second);
+    var board = try Board.init(allocator, 9, 3, &first_player);
+    defer board.deinit();
+
+    // Simulate a winning condition for the first player
+    board.cells[2].player = &first_player;
+    board.cells[4].player = &first_player;
+    board.cells[6].player = &first_player;
+
+    try testing.expect(board.checkWin(&first_player) == true);
+    try testing.expect(board.checkWin(&second_player) == false);
 }
